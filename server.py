@@ -29,10 +29,13 @@ def extract_uplc_data(pdf_file):
     with pdfplumber.open(pdf_file) as pdf:
         page1 = pdf.pages[0]
         text_page1 = page1.extract_text()
+        
         wo_match = re.search(r'SampleNameList:\s*(\d+)', text_page1)
         if wo_match: extracted_data["workorder_id"] = wo_match.group(1)
+        
         cln_match = re.search(r'UPLC Analysis Report:\s*([A-Za-z0-9\-]+)', text_page1)
         if cln_match: extracted_data["cln"] = cln_match.group(1)
+        
         if "Low pH" in text_page1 or "low pH" in text_page1: extracted_data["uplc_ph"] = "Low pH"
         elif "High pH" in text_page1 or "high pH" in text_page1: extracted_data["uplc_ph"] = "High pH"
         
@@ -107,36 +110,26 @@ def get_flash_cartridge(mass_g):
     elif 9999 <= mass_mg < 19999: return "Biotage Sfär 60μm 200g"
     else: return "Biotage Sfär 60μm 300g"
 
-# --- NEW: Tables added to the Flash Routing Logic ---
 def get_flash_method_from_smiles(smiles):
-    # Defining the tables exactly as you provided
     method1_table = [
-        {"cv": 0, "a": 100, "b": 0},
-        {"cv": 2, "a": 100, "b": 0},
-        {"cv": 6, "a": 70, "b": 30},
-        {"cv": 5, "a": 50, "b": 50},
-        {"cv": 5, "a": 30, "b": 70},
-        {"cv": 3, "a": 0, "b": 100},
+        {"cv": 0, "a": 100, "b": 0}, {"cv": 2, "a": 100, "b": 0},
+        {"cv": 6, "a": 70, "b": 30}, {"cv": 5, "a": 50, "b": 50},
+        {"cv": 5, "a": 30, "b": 70}, {"cv": 3, "a": 0, "b": 100},
         {"cv": 5, "a": 0, "b": 100}
     ]
-    
     method2_table = [
-        {"cv": 0, "a": 100, "b": 0},
-        {"cv": 3, "a": 100, "b": 0},
-        {"cv": 15, "a": 90, "b": 10},
-        {"cv": 5, "a": 80, "b": 20},
+        {"cv": 0, "a": 100, "b": 0}, {"cv": 3, "a": 100, "b": 0},
+        {"cv": 15, "a": 90, "b": 10}, {"cv": 5, "a": 80, "b": 20},
         {"cv": 5, "a": 80, "b": 20}
     ]
 
     default_method = ("Method 1: General Gradient", "Heptane / Hexane", "5% MeOH in DCM", method1_table)
     
-    if not smiles or smiles.strip() == "":
-        return default_method
+    if not smiles or smiles.strip() == "": return default_method
         
     try:
         mol = Chem.MolFromSmiles(smiles)
-        if mol is None:
-            return default_method
+        if mol is None: return default_method
             
         carboxylic_acid = Chem.MolFromSmarts('C(=O)[OH]')
         primary_amine = Chem.MolFromSmarts('[NX3;H2,H1;!$(NC=O)]') 
@@ -154,8 +147,7 @@ def predict_purification(uplc_data, stage, moves_in_tlc):
     rt = uplc_data["target_rt"]
     crude_mass_g = uplc_data["crude_mass_g"]
     
-    if purity is None: 
-        return "Manual Review Required", None, "Could not read the Target Purity."
+    if purity is None: return "Manual Review Required", None, "Could not read the Target Purity."
     
     def format_prep(r): return "Prep-HPLC", get_prep_gradient(rt), r
     def format_flash(r): return "Normal Phase Flash", get_flash_cartridge(crude_mass_g), r
@@ -170,7 +162,6 @@ def predict_purification(uplc_data, stage, moves_in_tlc):
         else:
             would_be_prep = True
             reason = "Final product prioritized for maximum purity or requires tight separation."
-            
     elif stage == "Intermediate":
         if not uplc_data["baseline_separated"]: 
             would_be_prep = True
@@ -187,14 +178,13 @@ def predict_purification(uplc_data, stage, moves_in_tlc):
     is_high_mass = mass in [">5 g", "5 g - 2 g"]
 
     if is_high_mass:
-        if would_be_prep and stage == "Intermediate":
-            return format_rp_flash(reason + " [Rerouted to RP-Flash due to mass > 2g]")
-        else:
-            return format_flash("High capacity normal-phase required for mass > 2g.")
+        if would_be_prep and stage == "Intermediate": return format_rp_flash(reason)
+        else: return format_flash("High capacity normal-phase required for mass > 2g.")
     
     if would_be_prep: return format_prep(reason)
     else: return format_flash(reason)
 
+# --- DATABASE OPERATIONS ---
 def log_to_google_sheets(data, method):
     try:
         gc = gspread.service_account(filename="credentials.json")
@@ -202,11 +192,12 @@ def log_to_google_sheets(data, method):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         row_to_add = [
             current_time, data["workorder_id"], data["cln"], 
-            data["crude_mass_g"], data["target_rt"], method
+            data["crude_mass_g"], data["target_rt"], method, 
+            "Pending", "" # Status and Comments placeholder
         ]
         sheet.append_row(row_to_add)
-    except Exception:
-        pass 
+    except Exception as e:
+        print("Error logging to sheets:", e)
 
 def search_google_sheets(query):
     try:
@@ -223,23 +214,22 @@ def search_google_sheets(query):
                 cln = str(row[2]).strip().lower()
                 
                 if q in wo or q in cln:
+                    status = row[6] if len(row) > 6 else "Pending"
+                    comments = row[7] if len(row) > 7 else ""
+                    
                     results.append({
-                        "date": row[0],
-                        "workorder": row[1],
-                        "cln": row[2],
-                        "mass": row[3],
-                        "rt": row[4],
-                        "method": row[5]
+                        "date": row[0], "workorder": row[1], "cln": row[2],
+                        "mass": row[3], "rt": row[4], "method": row[5],
+                        "status": status, "comments": comments
                     })
                     
-        if len(results) > 0:
-            return {"found": True, "results": results}
-        else:
-            return {"found": False, "message": f"No records found containing '{query}'"}
+        if len(results) > 0: return {"found": True, "results": results}
+        else: return {"found": False, "message": f"No records found containing '{query}'"}
             
     except Exception as e:
         return {"found": False, "message": f"Google Sheets Error: {str(e)}"}
 
+# --- API ENDPOINTS ---
 @app.post("/predict")
 async def run_prediction(
     background_tasks: BackgroundTasks, 
@@ -260,38 +250,64 @@ async def run_prediction(
     
     if method == "Prep-HPLC":
         vol_ml = round((data["crude_mass_g"] * 1000) / 100, 1)
-        if data.get("target_mass"):
-            m_ion = int(round(data["target_mass"] + 1))
-        else:
-            m_ion = "N/A"
+        m_ion = int(round(data["target_mass"] + 1)) if data.get("target_mass") else "N/A"
             
         prep_conds = {
             "ph": data["uplc_ph"].replace(" pH", ""),
             "gradient": get_prep_gradient(data["target_rt"]),
-            "volume_ml": vol_ml,
-            "mass_ion": m_ion
+            "volume_ml": vol_ml, "mass_ion": m_ion
         }
     
     elif method == "Normal Phase Flash":
-        # Extract the table along with the method info
         method_name, sol_a, sol_b, method_table = get_flash_method_from_smiles(smiles)
         flash_conds = {
-            "cartridge": conditions,
-            "method_name": method_name,
-            "solvent_a": sol_a,
-            "solvent_b": sol_b,
-            "table": method_table
+            "cartridge": conditions, "method_name": method_name,
+            "solvent_a": sol_a, "solvent_b": sol_b, "table": method_table
         }
 
     return {
-        "method": method,
-        "conditions": conditions,
-        "reason": reason,
-        "data": data,
-        "prep_conditions": prep_conds,
-        "flash_conditions": flash_conds 
+        "method": method, "conditions": conditions, "reason": reason,
+        "data": data, "prep_conditions": prep_conds, "flash_conditions": flash_conds 
     }
 
 @app.get("/search")
 def search_records(q: str):
     return search_google_sheets(q)
+
+@app.post("/update_outcome")
+def update_outcome(
+    workorder: str = Form(...), 
+    date: str = Form(...), # NEW: Added Date to exact match
+    status: str = Form(...), 
+    comments: str = Form("")
+):
+    try:
+        gc = gspread.service_account(filename="credentials.json")
+        sheet = gc.open("Purification Logs").sheet1
+        
+        # Download all values to manually guarantee we find the exact row
+        rows = sheet.get_all_values()
+        wo_lower = workorder.strip().lower()
+        date_str = date.strip()
+        
+        target_row_index = None
+        # Loop forward to find the row where BOTH Date and WO match exactly
+        for i, row in enumerate(rows):
+            if len(row) >= 2:
+                row_date = row[0].strip()
+                row_wo = row[1].strip().lower()
+                
+                if row_wo == wo_lower and row_date == date_str:
+                    target_row_index = i + 1 # +1 because gspread is 1-indexed
+                    break
+                
+        if target_row_index:
+            sheet.update_cell(target_row_index, 7, status)
+            if comments:
+                sheet.update_cell(target_row_index, 8, comments)
+            return {"success": True}
+        else:
+            return {"success": False, "message": "Exact run (Date + Workorder) not found in sheet."}
+            
+    except Exception as e:
+        return {"success": False, "message": str(e)}
