@@ -8,65 +8,69 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f4f6f9; color: #333; display: flex; justify-content: center; padding-top: 50px; padding-bottom: 50px; position: relative; min-height: 100vh; margin: 0; }
         body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('background.jpg'); background-size: 50%; background-position: center; background-repeat: no-repeat; opacity: 0.15; z-index: -1; }
-        .container { width: 100%; max-width: 650px; position: relative; }
+        .container { width: 100%; max-width: 750px; position: relative; }
         h1 { color: #6B2346; font-size: 2rem; margin-bottom: 30px; text-align: center; font-weight: 700;}
 
         /* --- DASHBOARD WIDGETS --- */
         .widget-box { background-color: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1px solid #E2E8F0; display: flex; flex-direction: column; max-width: 500px; margin: 0 auto 30px auto;}
-        .widget-box h3 { font-size: 0.85rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px 0; text-align: center;}
+        .widget-box h3 { font-size: 0.8rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px 0; text-align: center;}
         
-        .search-bar { display: flex; align-items: center; background-color: #fff; border-radius: 50px; padding: 6px 6px 6px 15px; border: 1px solid #CBD5E1; transition: all 0.3s ease; margin-bottom: 10px;}
+        .search-bar { display: flex; align-items: center; background-color: #fff; border-radius: 50px; padding: 6px 6px 6px 15px; border: 1px solid #CBD5E1; transition: all 0.3s ease;}
         .search-bar:focus-within { border-color: #581C87;}
         .search-bar input { border: none; background: transparent; flex-grow: 1; font-family: 'Inter', sans-serif; font-size: 0.9rem; outline: none; color: #334155; }
         .search-bar button { margin: 0; padding: 6px 15px; font-size: 0.85rem; background-color: #581C87; color: white; border: none; border-radius: 50px; cursor: pointer; transition: all 0.2s;}
         .search-bar button:hover { opacity: 0.9; }
-
         .search-result-box { display: none; background-color: #fff; text-align: left; padding: 15px; border-radius: 10px; margin-top: 10px; font-size: 0.85rem; border: 1px solid #E2E8F0; max-height: 250px; overflow-y: auto;}
 
-        /* --- STATUS BUTTONS INSIDE SEARCH RESULTS --- */
-        .status-btn {
-            padding: 4px 12px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            border-radius: 50px;
-            border: 1px solid;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: 'Inter', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        /* --- FLOATING DISCREET ANALYTICS WIDGET --- */
+        .analytics-floating {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 220px;
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #E2E8F0;
+            z-index: 1000;
         }
+        .analytics-floating h3 { font-size: 0.75rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px 0; text-align: left; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px;}
+        
+        .stat-row { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 4px; margin-top: 8px;}
+        .progress-bar-bg { width: 100%; height: 6px; background-color: #E2E8F0; border-radius: 10px; overflow: hidden; margin-bottom: 5px; }
+        .progress-bar-fill { height: 100%; border-radius: 10px; transition: width 1s ease-in-out; }
+        .progress-bar-fill.prep { background-color: #3B82F6; } 
+        .progress-bar-fill.norm { background-color: #F59E0B; } 
+        .progress-bar-fill.rp { background-color: #EF4444; } 
+
+        .status-btn { padding: 4px 12px; font-size: 0.7rem; font-weight: 700; border-radius: 50px; border: 1px solid; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
         .status-btn:hover { opacity: 0.7; transform: scale(0.98);}
 
-        /* --- DIVIDER --- */
         .divider { display: flex; align-items: center; text-align: center; color: #94A3B8; margin-bottom: 30px; font-size: 0.9rem; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
         .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px dashed #CBD5E1; }
         .divider:not(:empty)::before { margin-right: .5em; }
         .divider:not(:empty)::after { margin-left: .5em; }
 
-        /* --- UPLOAD BOX --- */
         .upload-box { background-color: rgba(255, 255, 255, 0.6); backdrop-filter: blur(8px); border: 2px dashed #CBD5E1; border-radius: 30px; padding: 25px 20px; max-width: 400px; margin: 0 auto 20px auto; text-align: center; transition: all 0.3s ease; cursor: pointer; display: flex; justify-content: center; align-items: center; min-height: 60px; }
         .upload-box.dragover { border-color: #5EB0B5; background-color: rgba(94, 176, 181, 0.15); }
         .upload-box input { display: none; }
         .upload-text { font-size: 1rem; color: #475569; width: 100%; font-weight: 500; overflow: hidden;}
-        
         .loaded-file-badge { display: flex; align-items: center; justify-content: center; gap: 12px; background-color: #F8FAFC; border: 1px solid #E2E8F0; padding: 10px 20px; border-radius: 50px; max-width: 100%; box-sizing: border-box; margin: 0 auto; }
         .file-name { font-size: 0.95rem; font-weight: 600; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
 
-        /* --- SETTINGS --- */
-        .settings-box { display: none; background-color: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); padding: 20px; border-radius: 12px; margin-bottom: 20px;}
+        .settings-box { display: none; background-color: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); padding: 20px; border-radius: 12px; margin-bottom: 20px; max-width: 600px; margin-left: auto; margin-right: auto;}
         .settings-row { display: flex; justify-content: space-between; margin-bottom: 20px;}
         .form-group { display: flex; flex-direction: column; width: 48%; }
         .form-group.full-width { width: 100%; }
         .form-group label { font-weight: 600; margin-bottom: 8px; color: #475569;}
         select, input[type="radio"], input[type="text"].smiles-input { padding: 10px; font-size: 1rem; background-color: rgba(255, 255, 255, 0.9); border: 1px solid #CBD5E1; border-radius: 6px; font-family: 'Inter', sans-serif;}
 
-        /* --- MAIN BUTTON --- */
         .btn-main { display: block; margin: 10px auto; background-color: #581C87; color: white; border: 2px solid #581C87; padding: 12px 40px; border-radius: 50px; font-size: 1rem; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(88, 28, 135, 0.2); }
         .btn-main:hover { background-color: transparent; color: #581C87; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(88, 28, 135, 0.15);}
 
-        /* --- RESULTS --- */
-        .result-card { display: none; background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); border-left: 6px solid #5EB0B5; margin-top: 20px;}
+        .result-card { display: none; background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); border-left: 6px solid #5EB0B5; margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto;}
         .result-method { color: #6B2346; font-size: 1.5rem; font-weight: 700; margin-bottom: 10px;}
         .result-conditions { color: #374151; font-size: 1.2rem; font-weight: 600; padding-bottom: 10px; border-bottom: 1px solid #E5E7EB; margin-bottom: 15px;}
         
@@ -90,10 +94,23 @@
 </head>
 <body>
 
+<div class="analytics-floating">
+    <h3>Live Success Rates</h3>
+    
+    <div class="stat-row"><span>Prep-HPLC</span> <span id="statPrep">0%</span></div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill prep" id="barPrep" style="width: 0%;"></div></div>
+    
+    <div class="stat-row"><span>Norm. Flash</span> <span id="statNorm">0%</span></div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill norm" id="barNorm" style="width: 0%;"></div></div>
+
+    <div class="stat-row"><span>Rev. Flash</span> <span id="statRev">0%</span></div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill rp" id="barRev" style="width: 0%;"></div></div>
+</div>
+
 <div class="container">
     <h1>Purification Method Predictor V.1</h1>
 
-    <div class="widget-box">
+    <div class="widget-box" style="width: 100%; max-width: none;">
         <h3>Search Past Runs & Log Outcomes</h3>
         <div class="search-bar">
             <svg style="margin-right: 10px;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -123,7 +140,6 @@
                     <option value="Final">Final</option>
                 </select>
             </div>
-            
             <div class="form-group">
                 <label>Moves in TLC? (Rf > 0.1)</label>
                 <select id="tlcInput">
@@ -190,44 +206,94 @@
 </div>
 
 <script>
-    // --- UPDATE STATUS (REQUIRES DATE AS UNIQUE ID) ---
+    // --- LOAD LIVE ANALYTICS INTO PROGRESS BARS ---
+    async function updateAnalyticsPanel() {
+        try {
+            const response = await fetch("http://127.0.0.1:8000/analytics");
+            const data = await response.json();
+            
+            let pVal = data["Prep-HPLC"] || 0;
+            document.getElementById('statPrep').innerText = pVal + "%";
+            document.getElementById('barPrep').style.width = pVal + "%";
+
+            let nVal = data["Normal Phase Flash"] || 0;
+            document.getElementById('statNorm').innerText = nVal + "%";
+            document.getElementById('barNorm').style.width = nVal + "%";
+
+            let rVal = data["Reverse Phase Flash"] || 0;
+            document.getElementById('statRev').innerText = rVal + "%";
+            document.getElementById('barRev').style.width = rVal + "%";
+
+        } catch(e) { console.log("Failed to load analytics."); }
+    }
+    window.onload = updateAnalyticsPanel;
+
+    // --- STATUS AND PURITY UPDATE LOGIC (INSTANT DOM UPDATE) ---
     async function setStatus(workorder, date, newStatus, btnElement) {
         let comments = "";
+        let purity = "";
         
         if (newStatus === "Failed") {
             comments = prompt("Optional: Why did it fail? (e.g., Co-elution, Streaking)");
             if (comments === null) return; 
+            purity = prompt("Optional: Post-Purification Purity (if any):");
+            if (purity === null) return; 
+        } else {
+            purity = prompt("Enter Post-Purification Purity (e.g., 98%):");
+            if (purity === null) return;
         }
 
+        // Instantly Update Button Colors
         const parent = btnElement.parentElement;
         const btns = parent.querySelectorAll('button');
         btns[0].style.background = 'transparent'; btns[0].style.color = '#22C55E';
         btns[1].style.background = 'transparent'; btns[1].style.color = '#EF4444';
 
+        let badgeStyle = "";
         if (newStatus === 'Success') {
             btnElement.style.background = '#22C55E';
             btnElement.style.color = 'white';
+            badgeStyle = "background:#DCFCE7; border: 1px solid #86EFAC; color:#16A34A;"; // Green
         } else {
             btnElement.style.background = '#EF4444';
             btnElement.style.color = 'white';
+            badgeStyle = "background:#FEF2F2; border: 1px solid #FECACA; color:#EF4444;"; // Red
         }
 
+        // Instantly Update the Dynamic Purity Badge at the bottom
+        const rowDiv = btnElement.closest('.search-result-row');
+        if (rowDiv) {
+            const textContainer = rowDiv.querySelector('.purity-text-container');
+            if (purity && textContainer) {
+                textContainer.innerHTML = `<span class="purity-badge" style="${badgeStyle} padding:2px 8px; border-radius:50px; font-weight:700; font-size:0.7rem; letter-spacing:0.5px; display:inline-block; margin-top:4px;">PURITY: ${purity}</span>`;
+            }
+
+            const commentsContainer = rowDiv.querySelector('.comments-container');
+            if (commentsContainer) {
+                commentsContainer.innerText = comments ? `Note: ${comments}` : '';
+            }
+        }
+
+        // Send the real update to the server quietly in the background
         const formData = new FormData();
         formData.append("workorder", workorder);
         formData.append("date", date); 
         formData.append("status", newStatus);
         formData.append("comments", comments || "");
+        formData.append("post_purity", purity || ""); 
         
         try {
             const response = await fetch("http://127.0.0.1:8000/update_outcome", { method: "POST", body: formData });
             const result = await response.json();
-            if(!result.success) {
+            if(result.success) {
+                updateAnalyticsPanel(); // Silently updates the progress bars
+            } else {
                 alert("Failed to update: " + result.message);
             }
         } catch (e) { alert("Failed to connect to Python server."); }
     }
 
-    // --- SEARCH LOGIC ---
+    // --- SEARCH LOGIC (DYNAMIC COLOR CODING INCLUDED) ---
     document.getElementById('searchBtn').addEventListener('click', async function() {
         const query = document.getElementById('searchInput').value.trim();
         if(!query) return;
@@ -244,17 +310,32 @@
                 
                 data.results.forEach((res, i) => {
                     let border = i === data.results.length - 1 ? "" : "border-bottom: 1px dashed #CBD5E1;";
-                    
                     let succStyle = res.status === 'Success' ? 'background:#22C55E; color:white; border-color:#22C55E;' : 'background:transparent; color:#22C55E; border-color:#22C55E;';
                     let failStyle = res.status === 'Failed' ? 'background:#EF4444; color:white; border-color:#EF4444;' : 'background:transparent; color:#EF4444; border-color:#EF4444;';
                     
+                    // Match the badge color to the status
+                    let badgeStyle = "background:#F1F5F9; border: 1px solid #CBD5E1; color:#475569;"; // Default Gray
+                    if (res.status === 'Success') {
+                        badgeStyle = "background:#DCFCE7; border: 1px solid #86EFAC; color:#16A34A;"; // Green
+                    } else if (res.status === 'Failed') {
+                        badgeStyle = "background:#FEF2F2; border: 1px solid #FECACA; color:#EF4444;"; // Red
+                    }
+
+                    let bottomPurityHtml = res.post_purity 
+                        ? `<span class="purity-badge" style="${badgeStyle} padding:2px 8px; border-radius:50px; font-weight:700; font-size:0.7rem; letter-spacing:0.5px; display:inline-block; margin-top:4px;">PURITY: ${res.post_purity}</span>` 
+                        : `<span style="font-style: italic; font-size: 0.8rem; color: #94A3B8; display:inline-block; margin-top:4px;">Purity not recorded</span>`;
+                    
                     htmlContent += `
-                        <div style="padding: 12px 0; ${border}">
+                        <div class="search-result-row" style="padding: 12px 0; ${border}">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div>
-                                    <div style="color:#581C87; font-weight:700;">${res.method}</div>
-                                    <div style="margin-top:2px;"><strong>WO:</strong> ${res.workorder} | <strong>CLN:</strong> ${res.cln}</div>
-                                    <div style="margin-top:2px; color:#64748B;">Mass: ${res.mass}g | RT: ${res.rt}m</div>
+                                    <div class="method-header-container" style="color:#581C87; font-weight:700;">
+                                        ${res.method}
+                                    </div>
+                                    <div style="margin-top:4px;"><strong>WO:</strong> ${res.workorder} | <strong>CLN:</strong> ${res.cln}</div>
+                                    <div class="purity-text-container">
+                                        ${bottomPurityHtml}
+                                    </div>
                                 </div>
                                 
                                 <div style="display: flex; flex-direction: column; gap: 5px;">
@@ -262,7 +343,7 @@
                                     <button class="status-btn" style="${failStyle}" onclick="setStatus('${res.workorder}', '${res.date}', 'Failed', this)">Failed</button>
                                 </div>
                             </div>
-                            ${res.comments ? `<div style="margin-top: 6px; font-size: 0.75rem; color: #64748B; font-style: italic;">Note: ${res.comments}</div>` : ''}
+                            <div class="comments-container" style="margin-top: 6px; font-size: 0.75rem; color: #64748B; font-style: italic;">${res.comments ? 'Note: ' + res.comments : ''}</div>
                         </div>
                     `;
                 });
@@ -324,8 +405,6 @@
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
         formData.append("stage", document.getElementById('stageInput').value);
-        
-        // UPDATED: Now fetches the value from the dropdown select
         formData.append("moves_in_tlc", document.getElementById('tlcInput').value);
         formData.append("smiles", smilesVal);
 

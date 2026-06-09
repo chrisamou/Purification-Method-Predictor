@@ -175,14 +175,13 @@ def predict_purification(uplc_data, stage, moves_in_tlc):
             would_be_prep = True
             reason = "Default conservative recommendation (does not move on TLC or requires tight separation)."
 
-    is_high_mass = mass in [">5 g", "5 g - 2 g"]
-
-    if is_high_mass:
-        if would_be_prep and stage == "Intermediate": return format_rp_flash(reason)
-        else: return format_flash("High capacity normal-phase required for mass > 2g.")
-    
-    if would_be_prep: return format_prep(reason)
-    else: return format_flash(reason)
+    if would_be_prep:
+        if stage == "Intermediate":
+            return format_rp_flash(reason + " [Rerouted from Prep to RP-Flash for Intermediate Stage]")
+        else:
+            return format_prep(reason)
+    else:
+        return format_flash(reason)
 
 # --- DATABASE OPERATIONS ---
 def log_to_google_sheets(data, method):
@@ -193,7 +192,7 @@ def log_to_google_sheets(data, method):
         row_to_add = [
             current_time, data["workorder_id"], data["cln"], 
             data["crude_mass_g"], data["target_rt"], method, 
-            "Pending", "" # Status and Comments placeholder
+            "Pending", "", ""  # Added 9th column for Purity
         ]
         sheet.append_row(row_to_add)
     except Exception as e:
@@ -216,11 +215,12 @@ def search_google_sheets(query):
                 if q in wo or q in cln:
                     status = row[6] if len(row) > 6 else "Pending"
                     comments = row[7] if len(row) > 7 else ""
+                    post_purity = row[8] if len(row) > 8 else "" # NEW: Pulling purity
                     
                     results.append({
                         "date": row[0], "workorder": row[1], "cln": row[2],
                         "mass": row[3], "rt": row[4], "method": row[5],
-                        "status": status, "comments": comments
+                        "status": status, "comments": comments, "post_purity": post_purity
                     })
                     
         if len(results) > 0: return {"found": True, "results": results}
@@ -277,37 +277,76 @@ def search_records(q: str):
 @app.post("/update_outcome")
 def update_outcome(
     workorder: str = Form(...), 
-    date: str = Form(...), # NEW: Added Date to exact match
+    date: str = Form(...), 
     status: str = Form(...), 
-    comments: str = Form("")
+    comments: str = Form(""),
+    post_purity: str = Form("") # NEW: Accepting purity from frontend
 ):
     try:
         gc = gspread.service_account(filename="credentials.json")
         sheet = gc.open("Purification Logs").sheet1
         
-        # Download all values to manually guarantee we find the exact row
         rows = sheet.get_all_values()
         wo_lower = workorder.strip().lower()
         date_str = date.strip()
         
         target_row_index = None
-        # Loop forward to find the row where BOTH Date and WO match exactly
         for i, row in enumerate(rows):
             if len(row) >= 2:
                 row_date = row[0].strip()
                 row_wo = row[1].strip().lower()
                 
                 if row_wo == wo_lower and row_date == date_str:
-                    target_row_index = i + 1 # +1 because gspread is 1-indexed
+                    target_row_index = i + 1 
                     break
                 
         if target_row_index:
+            # Overwriting cells 7 (Status), 8 (Comments), 9 (Post Purity)
             sheet.update_cell(target_row_index, 7, status)
-            if comments:
-                sheet.update_cell(target_row_index, 8, comments)
+            sheet.update_cell(target_row_index, 8, comments)
+            sheet.update_cell(target_row_index, 9, post_purity)
             return {"success": True}
         else:
             return {"success": False, "message": "Exact run (Date + Workorder) not found in sheet."}
             
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+@app.get("/analytics")
+def get_analytics():
+    try:
+        gc = gspread.service_account(filename="credentials.json")
+        sheet = gc.open("Purification Logs").sheet1
+        
+        rows = sheet.get_all_values()
+        
+        counts = {
+            "Prep-HPLC": {"total": 0, "success": 0},
+            "Normal Phase Flash": {"total": 0, "success": 0},
+            "Reverse Phase Flash": {"total": 0, "success": 0}
+        }
+        
+        for row in rows[1:]:
+            if len(row) >= 7: 
+                method_str = str(row[5]).strip() 
+                status_str = str(row[6]).strip() 
+                
+                cat = None
+                if "Prep" in method_str: cat = "Prep-HPLC"
+                elif "Normal" in method_str: cat = "Normal Phase Flash"
+                elif "Reverse" in method_str or "C18" in method_str: cat = "Reverse Phase Flash"
+                
+                if cat and status_str in ['Success', 'Partial Separation', 'Failed']:
+                    counts[cat]["total"] += 1
+                    if status_str == 'Success':
+                        counts[cat]["success"] += 1
+                        
+        results = {"Prep-HPLC": 0, "Normal Phase Flash": 0, "Reverse Phase Flash": 0}
+        for cat in results.keys():
+            if counts[cat]["total"] > 0:
+                results[cat] = int(round((counts[cat]["success"] / counts[cat]["total"]) * 100))
+                
+        return results
+
+    except Exception as e:
+        return {"Prep-HPLC": 0, "Normal Phase Flash": 0, "Reverse Phase Flash": 0}
